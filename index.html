@@ -1,0 +1,3419 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>寻光V2.3</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            touch-action: none;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        
+        body {
+            background: #000;
+            color: #fff;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+            position: relative;
+            transition: background-color 2.5s ease, color 2.5s ease;
+        }
+        
+        /* 光明状态 */
+        body.light-found {
+            background: #fff;
+            color: #000;
+        }
+        
+        body.light-found #main-text {
+            color: #000;
+            text-shadow: 0 0 30px rgba(0,0,0,0.1);
+        }
+        
+        body.light-found #sub-text {
+            color: #666;
+        }
+        
+        body.light-found .dir-btn {
+            background: rgba(0,0,0,0.05);
+            border-color: rgba(0,0,0,0.2);
+        }
+        
+        body.light-found .dir-btn svg {
+            fill: rgba(0,0,0,0.6);
+        }
+        
+        body.light-found #hint {
+            color: #999;
+        }
+        
+        body.light-found #event-badge {
+            color: #999;
+        }
+        
+        /* 状态光晕层 */
+        #status-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s ease-out;
+            z-index: 5;
+        }
+        
+        #status-overlay.red {
+            background: radial-gradient(circle at center, rgba(255,50,50,0.4), transparent 60%);
+            opacity: 1;
+            animation: pulse-red 0.8s ease-out;
+        }
+        
+        #status-overlay.green {
+            background: radial-gradient(circle at center, rgba(50,255,100,0.4), transparent 60%);
+            opacity: 1;
+            animation: pulse-green 1s ease-out;
+        }
+        
+        #status-overlay.gold {
+            background: radial-gradient(circle at center, rgba(255,215,0,0.5), transparent 60%);
+            opacity: 1;
+            animation: pulse-gold 0.8s ease-out;
+        }
+        
+        #status-overlay.blue {
+            background: radial-gradient(circle at center, rgba(100,150,255,0.4), transparent 60%);
+            opacity: 1;
+        }
+        
+        @keyframes pulse-red {
+            0% { transform: scale(0.8); opacity: 0; }
+            50% { opacity: 1; }
+            100% { transform: scale(1.2); opacity: 0; }
+        }
+        
+        @keyframes pulse-green {
+            0% { transform: scale(0.9); opacity: 0; }
+            50% { opacity: 1; }
+            100% { transform: scale(1.1); opacity: 0; }
+        }
+        
+        @keyframes pulse-gold {
+            0% { transform: scale(0.8); opacity: 0; }
+            50% { opacity: 1; }
+            100% { transform: scale(1.3); opacity: 0; }
+        }
+        
+        /* 中央文字 */
+        #narrative {
+            position: absolute;
+            top: 45%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            max-width: 85%;
+            z-index: 10;
+            transition: all 2.5s ease;
+            width: 100%;
+            padding: 0 24px;
+        }
+        
+        #main-text {
+            font-size: 22px;
+            line-height: 1.8;
+            color: #fff;
+            text-shadow: 0 0 40px rgba(255,255,255,0.12);
+            margin-bottom: 20px;
+            font-weight: 300;
+            letter-spacing: 3px;
+            transition: all 2.5s ease;
+            min-height: 80px;
+            opacity: 0.95;
+        }
+        
+        #sub-text {
+            font-size: 14px;
+            color: #888;
+            line-height: 1.8;
+            transition: all 2.5s ease;
+            min-height: 50px;
+            letter-spacing: 1.5px;
+            opacity: 0.85;
+            font-weight: 300;
+        }
+        
+        /* 事件标记 */
+        #event-badge {
+            position: fixed;
+            top: 110px;
+            left: 32px;
+            font-size: 11px;
+            color: #666;
+            letter-spacing: 4px;
+            opacity: 0;
+            transition: opacity 0.4s;
+            z-index: 100;
+            text-transform: uppercase;
+            background: rgba(255,255,255,0.03);
+            padding: 8px 16px;
+            border-radius: 20px;
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+        
+        #event-badge.show {
+            opacity: 1;
+        }
+        
+        /* 方向按钮 */
+        .dir-btn {
+            position: fixed;
+            width: 64px;
+            height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 50%;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+        
+        .dir-btn:active {
+            background: rgba(255,255,255,0.12);
+            border-color: rgba(255,255,255,0.35);
+            transform: scale(0.92);
+        }
+        
+        .dir-btn svg {
+            width: 28px;
+            height: 28px;
+            fill: rgba(255,255,255,0.7);
+            transition: all 0.2s;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+        }
+        
+        .dir-btn:active svg {
+            fill: #fff;
+            filter: drop-shadow(0 0 15px rgba(255,255,255,0.8));
+            transform: scale(1.1);
+        }
+        
+        .dir-up {
+            top: 32px;
+            left: 50%;
+            margin-left: -32px;
+        }
+        .dir-up svg {
+            transform: rotate(0deg);
+        }
+        
+        .dir-down {
+            bottom: 32px;
+            left: 50%;
+            margin-left: -32px;
+        }
+        .dir-down svg {
+            transform: rotate(180deg);
+        }
+        
+        .dir-left {
+            left: 22px;
+            top: 50%;
+            margin-top: -32px;
+        }
+        .dir-left svg {
+            transform: rotate(-90deg);
+        }
+        
+        .dir-right {
+            right: 22px;
+            top: 50%;
+            margin-top: -32px;
+        }
+        .dir-right svg {
+            transform: rotate(90deg);
+        }
+        
+        /* 底部提示 */
+        #hint {
+            position: fixed;
+            bottom: 110px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 12px;
+            color: #555;
+            letter-spacing: 3px;
+            z-index: 10;
+            transition: all 2.5s ease;
+            opacity: 0.7;
+        }
+        
+        /* 开始界面 */
+        #start-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            transition: opacity 1s ease;
+        }
+        
+        #start-screen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        #game-title {
+            font-size: 56px;
+            font-weight: 100;
+            letter-spacing: 28px;
+            margin-bottom: 20px;
+            margin-left: 28px;
+            background: linear-gradient(to bottom, #fff, #666);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: breathe 3s ease-in-out infinite;
+        }
+        
+        #game-title .guang-char {
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        #game-title .guang-char.unlocked {
+            color: #ffd700;
+            text-shadow: 0 0 20px rgba(255,215,0,0.5);
+        }
+        
+        @keyframes breathe {
+            0%, 100% { opacity: 0.7; }
+            50% { opacity: 1; }
+        }
+        
+        #start-hint {
+            font-size: 12px;
+            color: #555;
+            margin-top: 40px;
+            letter-spacing: 3px;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 0.8; }
+        }
+        
+        #start-btn {
+            margin-top: 40px;
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            border: 1px solid rgba(255,255,255,0.3);
+            background: transparent;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        #start-btn:hover {
+            border-color: rgba(255,255,255,0.8);
+            box-shadow: 0 0 40px rgba(255,255,255,0.1);
+            transform: scale(1.05);
+        }
+        
+        #start-btn::after {
+            content: '';
+            width: 0;
+            height: 0;
+            border-left: 14px solid rgba(255,255,255,0.9);
+            border-top: 9px solid transparent;
+            border-bottom: 9px solid transparent;
+            margin-left: 5px;
+        }
+        
+        /* 难度选择器 */
+        #difficulty-selector {
+            margin-top: 30px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .difficulty-label {
+            font-size: 11px;
+            color: #444;
+            letter-spacing: 2px;
+            margin-bottom: 8px;
+        }
+        
+        .difficulty-options {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        .difficulty-btn {
+            padding: 10px 18px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.15);
+            color: #777;
+            font-size: 13px;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border-radius: 4px;
+            font-family: inherit;
+        }
+        
+        .difficulty-btn:hover {
+            background: rgba(255,255,255,0.08);
+            border-color: rgba(255,255,255,0.3);
+            color: #aaa;
+        }
+        
+        .difficulty-btn.active {
+            background: rgba(255,255,255,0.15);
+            border-color: rgba(255,255,255,0.5);
+            color: #fff;
+            box-shadow: 0 0 20px rgba(255,255,255,0.1);
+        }
+        
+        /* 帮助按钮 */
+        #help-btn {
+            position: fixed;
+            bottom: 32px;
+            left: 32px;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.15);
+            color: #777;
+            font-size: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            z-index: 1001;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        #help-btn:hover {
+            background: rgba(255,255,255,0.08);
+            border-color: rgba(255,255,255,0.3);
+            color: #fff;
+        }
+        
+        /* 存档按钮 */
+        #save-btn {
+            position: fixed;
+            bottom: 32px;
+            right: 90px;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.15);
+            color: #777;
+            font-size: 18px;
+            cursor: pointer;
+            transition: all 0.3s;
+            z-index: 1001;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        #save-btn:hover {
+            background: rgba(255,255,255,0.08);
+            border-color: rgba(255,255,255,0.3);
+            color: #fff;
+        }
+        
+        #save-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+        
+        #save-btn:disabled:hover {
+            background: rgba(255,255,255,0.03);
+            border-color: rgba(255,255,255,0.15);
+            color: #777;
+        }
+        
+        /* 成就按钮 */
+        #achievements-btn {
+            position: fixed;
+            bottom: 32px;
+            right: 32px;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.15);
+            color: #777;
+            font-size: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            z-index: 1001;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        #achievements-btn:hover {
+            background: rgba(255,255,255,0.08);
+            border-color: rgba(255,255,255,0.3);
+            color: #fff;
+        }
+        
+        #achievements-btn.has-new::after {
+            content: '';
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 8px;
+            height: 8px;
+            background: #ff6b6b;
+            border-radius: 50%;
+            animation: blink 1.5s infinite;
+        }
+        
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        
+        /* 游戏中存档按钮 */
+        #game-save-btn {
+            position: fixed;
+            bottom: 32px;
+            right: 90px;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.15);
+            color: #777;
+            font-size: 18px;
+            cursor: pointer;
+            transition: all 0.3s;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        #game-save-btn.show {
+            opacity: 1;
+            pointer-events: all;
+        }
+        
+        #game-save-btn:hover {
+            background: rgba(255,255,255,0.08);
+            border-color: rgba(255,255,255,0.3);
+            color: #fff;
+        }
+        
+        /* 游戏中返回主页按钮 */
+        #home-btn {
+            position: fixed;
+            bottom: 32px;
+            left: 32px;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.15);
+            color: #777;
+            font-size: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        #home-btn.show {
+            opacity: 1;
+            pointer-events: all;
+        }
+        
+        #home-btn:hover {
+            background: rgba(255,255,255,0.08);
+            border-color: rgba(255,255,255,0.3);
+            color: #fff;
+        }
+        
+        /* 弹窗样式 - 修复触控滑动 */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(10px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+            overflow: hidden;
+        }
+        
+        .modal-overlay.show {
+            opacity: 1;
+            pointer-events: all;
+        }
+        
+        .modal-content {
+            background: rgba(20,20,20,0.95);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            padding: 32px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            overflow-x: hidden;
+            transform: scale(0.9);
+            transition: transform 0.3s;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior: contain;
+            touch-action: pan-y;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255,255,255,0.2) transparent;
+            position: relative;
+        }
+
+        .modal-content::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .modal-content::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .modal-content::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.2);
+            border-radius: 3px;
+        }
+
+        .modal-content::-webkit-scrollbar-thumb:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        .modal-overlay.show .modal-content {
+            transform: scale(1);
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            position: sticky;
+            top: -32px;
+            background: rgba(20,20,20,0.95);
+            z-index: 10;
+            margin-top: -32px;
+            padding-top: 32px;
+        }
+        
+        .modal-title {
+            font-size: 20px;
+            font-weight: 300;
+            letter-spacing: 4px;
+        }
+        
+        .modal-close {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #888;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+        
+        .modal-close:hover {
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+        }
+        
+        /* 帮助内容样式 */
+        .help-section {
+            margin-bottom: 24px;
+        }
+        
+        .help-section h3 {
+            font-size: 14px;
+            color: #aaa;
+            letter-spacing: 2px;
+            margin-bottom: 12px;
+            font-weight: 400;
+        }
+        
+        .help-section p, .help-section li {
+            font-size: 13px;
+            color: #888;
+            line-height: 1.8;
+            margin-bottom: 8px;
+        }
+        
+        .help-section ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        
+        .help-section li {
+            padding-left: 16px;
+            position: relative;
+        }
+        
+        .help-section li::before {
+            content: '·';
+            position: absolute;
+            left: 0;
+            color: #666;
+        }
+        
+        .difficulty-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 12px;
+            font-size: 12px;
+        }
+        
+        .difficulty-table th, .difficulty-table td {
+            text-align: left;
+            padding: 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        
+        .difficulty-table th {
+            color: #aaa;
+            font-weight: 400;
+            letter-spacing: 1px;
+        }
+        
+        .difficulty-table td {
+            color: #777;
+        }
+        
+        .difficulty-table tr:last-child td {
+            border-bottom: none;
+        }
+        
+        /* 开关样式 */
+        .toggle-switch {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        
+        .toggle-switch:last-child {
+            border-bottom: none;
+        }
+        
+        .toggle-label {
+            font-size: 13px;
+            color: #888;
+        }
+        
+        .toggle-btn {
+            width: 48px;
+            height: 26px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 13px;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .toggle-btn.active {
+            background: rgba(100,200,100,0.5);
+        }
+        
+        .toggle-btn::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: #fff;
+            border-radius: 50%;
+            top: 3px;
+            left: 3px;
+            transition: all 0.3s;
+        }
+        
+        .toggle-btn.active::after {
+            left: 25px;
+        }
+        
+        /* 存档列表样式 - 更新为带按钮的样式 */
+        .save-slots {
+            display: grid;
+            gap: 12px;
+        }
+        
+        .save-slot {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 16px;
+            transition: all 0.3s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .save-slot:hover {
+            background: rgba(255,255,255,0.06);
+            border-color: rgba(255,255,255,0.2);
+        }
+        
+        .save-slot.empty {
+            opacity: 0.7;
+        }
+        
+        .save-slot.empty:hover {
+            opacity: 0.9;
+        }
+        
+        .save-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .save-chapter {
+            font-size: 14px;
+            color: #aaa;
+            letter-spacing: 1px;
+        }
+        
+        .save-time {
+            font-size: 11px;
+            color: #666;
+        }
+        
+        .save-actions {
+            display: flex;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+        
+        .save-action-btn {
+            padding: 8px 14px;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 6px;
+            color: #aaa;
+            font-size: 12px;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+            white-space: nowrap;
+        }
+        
+        .save-action-btn:hover {
+            background: rgba(255,255,255,0.15);
+            border-color: rgba(255,255,255,0.3);
+            color: #fff;
+        }
+        
+        .save-action-btn.save-btn {
+            background: rgba(100,200,100,0.15);
+            border-color: rgba(100,200,100,0.3);
+            color: #8f8;
+        }
+        
+        .save-action-btn.save-btn:hover {
+            background: rgba(100,200,100,0.25);
+            border-color: rgba(100,200,100,0.5);
+        }
+        
+        .save-action-btn.load-btn {
+            background: rgba(100,150,255,0.15);
+            border-color: rgba(100,150,255,0.3);
+            color: #8af;
+        }
+        
+        .save-action-btn.load-btn:hover {
+            background: rgba(100,150,255,0.25);
+            border-color: rgba(100,150,255,0.5);
+        }
+        
+        .save-action-btn.delete-btn {
+            background: rgba(255,100,100,0.15);
+            border-color: rgba(255,100,100,0.3);
+            color: #f88;
+        }
+        
+        .save-action-btn.delete-btn:hover {
+            background: rgba(255,100,100,0.25);
+            border-color: rgba(255,100,100,0.5);
+        }
+        
+        /* 成就列表样式 */
+        .achievements-list {
+            display: grid;
+            gap: 12px;
+        }
+        
+        .achievement-item {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            transition: all 0.3s;
+        }
+        
+        .achievement-item.unlocked {
+            background: rgba(255,255,255,0.06);
+            border-color: rgba(255,215,0,0.3);
+        }
+        
+        .achievement-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            background: rgba(255,255,255,0.05);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            flex-shrink: 0;
+            transition: all 0.3s;
+        }
+        
+        .achievement-item.unlocked .achievement-icon {
+            background: rgba(255,215,0,0.15);
+            box-shadow: 0 0 20px rgba(255,215,0,0.2);
+        }
+        
+        .achievement-info {
+            flex: 1;
+        }
+        
+        .achievement-name {
+            font-size: 14px;
+            color: #aaa;
+            margin-bottom: 4px;
+            letter-spacing: 1px;
+        }
+        
+        .achievement-item.unlocked .achievement-name {
+            color: #fff;
+        }
+        
+        .achievement-desc {
+            font-size: 12px;
+            color: #666;
+            line-height: 1.5;
+        }
+        
+        .achievement-item.unlocked .achievement-desc {
+            color: #888;
+        }
+        
+        .achievement-status {
+            font-size: 11px;
+            color: #444;
+            letter-spacing: 1px;
+        }
+        
+        .achievement-item.unlocked .achievement-status {
+            color: #ffd700;
+        }
+        
+        /* 重置成就按钮 */
+        .reset-achievements-btn {
+            width: 100%;
+            padding: 14px;
+            margin-top: 20px;
+            background: rgba(255,100,100,0.1);
+            border: 1px solid rgba(255,100,100,0.3);
+            border-radius: 8px;
+            color: #f88;
+            font-size: 13px;
+            letter-spacing: 2px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: inherit;
+        }
+        
+        .reset-achievements-btn:hover {
+            background: rgba(255,100,100,0.2);
+            border-color: rgba(255,100,100,0.5);
+        }
+        
+        /* 提示弹窗 */
+        .alert-modal .modal-content {
+            text-align: center;
+            padding: 40px 32px;
+        }
+        
+        .alert-message {
+            font-size: 15px;
+            color: #aaa;
+            line-height: 1.8;
+            margin-bottom: 24px;
+        }
+        
+        .alert-btn {
+            padding: 12px 32px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: #fff;
+            font-size: 14px;
+            letter-spacing: 2px;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+        
+        .alert-btn:hover {
+            background: rgba(255,255,255,0.2);
+            border-color: rgba(255,255,255,0.4);
+        }
+        
+        /* AI提示 */
+        #ai-hint {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(100,150,255,0.2);
+            border: 1px solid rgba(100,150,255,0.4);
+            border-radius: 16px;
+            padding: 20px 32px;
+            font-size: 16px;
+            color: #8ab4f8;
+            letter-spacing: 2px;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.5s;
+            z-index: 50;
+            backdrop-filter: blur(10px);
+        }
+        
+        #ai-hint.show {
+            opacity: 1;
+        }
+        
+        /* 震动指示器 */
+        #vib-indicator {
+            position: fixed;
+            top: 32px;
+            right: 32px;
+            width: 8px;
+            height: 8px;
+            background: #333;
+            border-radius: 50%;
+            transition: all 0.15s ease;
+            z-index: 100;
+        }
+        
+        #vib-indicator.active {
+            background: #fff;
+            box-shadow: 0 0 20px #fff, 0 0 40px rgba(255,255,255,0.5);
+            transform: scale(1.5);
+        }
+        
+        /* 章节信息容器 */
+        #chapter-info {
+            position: fixed;
+            top: 32px;
+            left: 32px;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        
+        #chapter-indicator {
+            font-size: 11px;
+            color: #555;
+            letter-spacing: 2px;
+            transition: all 2.5s ease;
+        }
+        
+        #current-difficulty {
+            font-size: 10px;
+            color: #444;
+            letter-spacing: 1px;
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+        
+        #current-difficulty.show {
+            opacity: 1;
+        }
+        
+        body.light-found #chapter-indicator {
+            color: #bbb;
+        }
+        
+        body.light-found #current-difficulty {
+            color: #999;
+        }
+        
+        /* 桌面端提示 */
+        #desktop-hint {
+            position: fixed;
+            bottom: 120px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 11px;
+            color: #444;
+            text-align: center;
+            line-height: 1.6;
+            letter-spacing: 1px;
+            opacity: 0.6;
+        }
+        
+        /* 点击继续提示 */
+        #continue-hint {
+            position: fixed;
+            bottom: 150px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 11px;
+            color: #777;
+            letter-spacing: 2px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 10;
+            animation: float 2s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateX(-50%) translateY(0); }
+            50% { transform: translateX(-50%) translateY(-5px); }
+        }
+        
+        #continue-hint.show {
+            opacity: 1;
+        }
+        
+        body.light-found #continue-hint {
+            color: #aaa;
+        }
+        
+        @media (max-width: 768px) {
+            #desktop-hint { display: none; }
+            #main-text { font-size: 18px; letter-spacing: 2px; line-height: 1.7; }
+            #sub-text { font-size: 13px; letter-spacing: 1px; }
+            .dir-btn { width: 52px; height: 52px; }
+            .dir-btn svg { width: 24px; height: 24px; }
+            .dir-up { top: 24px; margin-left: -26px; }
+            .dir-down { bottom: 24px; margin-left: -26px; }
+            .dir-left { left: 16px; margin-top: -26px; }
+            .dir-right { right: 16px; margin-top: -26px; }
+            #game-title { font-size: 48px; letter-spacing: 20px; }
+            #chapter-info { top: 24px; left: 24px; }
+            #event-badge { top: 90px; left: 24px; }
+            #vib-indicator { top: 24px; right: 24px; }
+            .difficulty-btn { padding: 8px 14px; font-size: 12px; }
+            #help-btn, #achievements-btn, #save-btn, #home-btn, #game-save-btn { 
+                width: 44px; 
+                height: 44px; 
+                bottom: 24px; 
+            }
+            #help-btn { left: 24px; }
+            #save-btn { right: 80px; }
+            #achievements-btn { right: 24px; }
+            #home-btn { left: 24px; bottom: 80px; }
+            #game-save-btn { right: 80px; }
+            .modal-content { padding: 24px; max-height: 85vh; }
+            .modal-header {
+                top: -24px;
+                margin-top: -24px;
+                padding-top: 24px;
+            }
+            .save-slot {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 12px;
+            }
+            .save-actions {
+                width: 100%;
+                justify-content: flex-end;
+            }
+            .save-action-btn {
+                padding: 6px 12px;
+                font-size: 11px;
+            }
+        }
+        
+        @media (min-width: 769px) {
+            .dir-left { left: 40px; }
+            .dir-right { right: 40px; }
+            .dir-up { top: 40px; }
+            .dir-down { bottom: 40px; }
+            #home-btn { left: 40px; bottom: 100px; }
+            #game-save-btn { right: 100px; bottom: 40px; }
+        }
+    </style>
+</head>
+<body>
+    <!-- 状态光晕层 -->
+    <div id="status-overlay"></div>
+
+    <!-- 开始界面 -->
+    <div id="start-screen">
+        <h1 id="game-title">寻<span class="guang-char" onclick="game.onGuangClick()">光</span></h1>
+        <p style="color: #666; font-size: 14px; letter-spacing: 4px;">一款关于黑暗与光明的游戏</p>
+        <p style="color: #444; font-size: 12px; margin-top: 30px; max-width: 280px; text-align: center; line-height: 2; letter-spacing: 0.5px;">
+            你失去了视觉<br>
+            在黑暗中摸索前行<br>
+            会遇到善良的人，也会遇到困难<br>
+            请戴上耳机，开启声音
+        </p>
+        
+        <!-- 难度选择 -->
+        <div id="difficulty-selector">
+            <div class="difficulty-label">选择难度</div>
+            <div class="difficulty-options">
+                <button class="difficulty-btn" data-diff="easy">简单</button>
+                <button class="difficulty-btn active" data-diff="medium">普通</button>
+                <button class="difficulty-btn" data-diff="normal">正常</button>
+                <button class="difficulty-btn" data-diff="hard">困难</button>
+            </div>
+        </div>
+        
+        <div id="start-btn"></div>
+        <p id="start-hint">轻触按钮以开始</p>
+        
+        <!-- 帮助按钮 -->
+        <button id="help-btn" onclick="game.showHelp()">?</button>
+        
+        <!-- 存档按钮 -->
+        <button id="save-btn" onclick="game.showSaveMenu()" title="存档">💾</button>
+        
+        <!-- 成就按钮 -->
+        <button id="achievements-btn" onclick="game.showAchievements()">🏆</button>
+    </div>
+
+    <!-- 帮助弹窗 -->
+    <div id="help-modal" class="modal-overlay" onclick="game.closeModals(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h2 class="modal-title">游戏帮助</h2>
+                <button class="modal-close" onclick="game.closeModals()">✕</button>
+            </div>
+            
+            <div class="help-section">
+                <h3>游戏规则</h3>
+                <ul>
+                    <li>你扮演一位失去视觉的行者，在黑暗中寻找光明</li>
+                    <li>使用方向键、WASD或屏幕按钮移动</li>
+                    <li>通过声音和震动感知周围环境</li>
+                    <li>避开障碍物，找到出口即可进入下一章</li>
+                    <li>途中会触发随机事件，有好有坏</li>
+                    <li>每章地图大小和障碍物数量会随进度增加</li>
+                    <li>靠近目标时会感受到"光"的提示</li>
+                </ul>
+            </div>
+            
+            <div class="help-section">
+                <h3>操作方式</h3>
+                <ul>
+                    <li>桌面端：方向键 ↑↓←→ 或 WASD 移动</li>
+                    <li>移动端：点击屏幕四角的箭头按钮</li>
+                    <li>事件触发后点击屏幕任意位置继续</li>
+                    <li>撞到墙会有震动反馈和声音提示</li>
+                </ul>
+            </div>
+            
+            <div class="help-section">
+                <h3>随机事件</h3>
+                <ul>
+                    <li><b>正面事件</b>：巡警帮助、导盲犬指引、老友重逢等，会帮助你更快到达目标</li>
+                    <li><b>负面事件</b>：不慎摔倒、施工路段、上错车等，会阻碍你的前进</li>
+                    <li>事件触发后点击屏幕查看结果并继续</li>
+                    <li>部分事件会让你眩晕或迷失方向</li>
+                </ul>
+            </div>
+
+            <div class="help-section">
+                <h3>状态效果</h3>
+                <ul>
+                    <li><b>眩晕</b>：触发负面事件后可能眩晕，需等待片刻才能继续移动</li>
+                    <li><b>指引</b>：触发正面事件后可能获得方向指引，会提示目标方向</li>
+                    <li><b>传送</b>：某些事件会将你传送到新位置</li>
+                </ul>
+            </div>
+
+            <div class="help-section">
+                <h3>难度说明</h3>
+                <table class="difficulty-table">
+                    <tr>
+                        <th>难度</th>
+                        <th>地图大小</th>
+                        <th>障碍数量</th>
+                        <th>事件频率</th>
+                        <th>正面事件</th>
+                    </tr>
+                    <tr>
+                        <td>简单</td>
+                        <td>较小</td>
+                        <td>较少</td>
+                        <td>低</td>
+                        <td>80%</td>
+                    </tr>
+                    <tr>
+                        <td>普通</td>
+                        <td>中等</td>
+                        <td>中等</td>
+                        <td>中</td>
+                        <td>65%</td>
+                    </tr>
+                    <tr>
+                        <td>正常</td>
+                        <td>标准</td>
+                        <td>标准</td>
+                        <td>中</td>
+                        <td>60%</td>
+                    </tr>
+                    <tr>
+                        <td>困难</td>
+                        <td>较大</td>
+                        <td>较多</td>
+                        <td>高</td>
+                        <td>45%</td>
+                    </tr>
+                </table>
+            </div>
+            
+            <div class="help-section">
+                <h3>实验室</h3>
+                <div class="toggle-switch">
+                    <span class="toggle-label">额外随机事件（beta）</span>
+                    <div class="toggle-btn" id="extra-events-toggle" onclick="game.toggleExtraEvents()"></div>
+                </div>
+            </div>
+            
+            <div class="help-section">
+                <h3>提示</h3>
+                <p>存档功能将于通关第10章后解锁，可手动设置5个存档点。已知问题：章节计数错误地少记了一个章节。</p>
+            </div>
+            
+            <div class="help-section">
+                <h3>关于 当前版本V2.3</h3>
+                <p>本游戏最初版本@雾画笙雨，后续版本@WTL2035</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 存档弹窗 -->
+    <div id="save-modal" class="modal-overlay" onclick="game.closeModals(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h2 class="modal-title">存档管理</h2>
+                <button class="modal-close" onclick="game.closeModals()">✕</button>
+            </div>
+            <div class="save-slots" id="save-slots">
+                <!-- 存档位由JS生成 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 成就弹窗 -->
+    <div id="achievements-modal" class="modal-overlay" onclick="game.closeModals(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h2 class="modal-title">成就</h2>
+                <button class="modal-close" onclick="game.closeModals()">✕</button>
+            </div>
+            <div class="achievements-list" id="achievements-list">
+                <!-- 成就列表由JS生成 -->
+            </div>
+            <button class="reset-achievements-btn" onclick="game.resetAchievements()">重置成就</button>
+        </div>
+    </div>
+
+    <!-- 提示弹窗 -->
+    <div id="alert-modal" class="modal-overlay alert-modal" onclick="game.closeModals(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <p class="alert-message" id="alert-message">提示信息</p>
+            <button class="alert-btn" onclick="game.closeModals()">确定</button>
+        </div>
+    </div>
+
+    <!-- 游戏界面 -->
+    <div id="chapter-info">
+        <div id="chapter-indicator">第 1 章</div>
+        <div id="current-difficulty">普通难度</div>
+    </div>
+    <div id="event-badge">随机事件</div>
+    
+    <div id="narrative">
+        <div id="main-text">等待开始...</div>
+        <div id="sub-text"></div>
+    </div>
+
+    <div id="hint">轻触以继续</div>
+    <div id="continue-hint">点击屏幕继续</div>
+    <div id="desktop-hint">使用方向键或 WASD 移动</div>
+    <div id="vib-indicator"></div>
+    
+    <!-- AI提示 -->
+    <div id="ai-hint"></div>
+
+    <!-- 游戏中返回主页按钮 -->
+    <button id="home-btn" onclick="game.returnToHome()" title="返回主页">⌂</button>
+    
+    <!-- 游戏中存档按钮 -->
+    <button id="game-save-btn" onclick="game.showSaveMenu()" title="存档">💾</button>
+
+    <!-- 方向按钮 -->
+    <div class="dir-btn dir-up" data-dir="up">
+        <svg viewBox="0 0 24 24"><path d="M12 4l-8 8h16z"/></svg>
+    </div>
+    <div class="dir-btn dir-down" data-dir="down">
+        <svg viewBox="0 0 24 24"><path d="M12 4l-8 8h16z"/></svg>
+    </div>
+    <div class="dir-btn dir-left" data-dir="left">
+        <svg viewBox="0 0 24 24"><path d="M12 4l-8 8h16z"/></svg>
+    </div>
+    <div class="dir-btn dir-right" data-dir="right">
+        <svg viewBox="0 0 24 24"><path d="M12 4l-8 8h16z"/></svg>
+    </div>
+
+    <script>
+        // 难度配置
+        const DIFFICULTY_CONFIG = {
+            easy: {
+                name: '简单',
+                mapSizeBonus: -2,
+                wallCountBonus: -2,
+                eventChance: 0.15,
+                positiveEventWeight: 0.8,
+                maxEvents: 1,
+                eventCooldownBase: 5,
+                stunDuration: 2000,
+                hintDistance: 3
+            },
+            medium: {
+                name: '普通',
+                mapSizeBonus: -1,
+                wallCountBonus: -1,
+                eventChance: 0.2,
+                positiveEventWeight: 0.65,
+                maxEvents: 2,
+                eventCooldownBase: 4,
+                stunDuration: 2500,
+                hintDistance: 2
+            },
+            normal: {
+                name: '正常',
+                mapSizeBonus: 0,
+                wallCountBonus: 0,
+                eventChance: 0.25,
+                positiveEventWeight: 0.6,
+                maxEvents: 2,
+                eventCooldownBase: 4,
+                stunDuration: 3000,
+                hintDistance: 2
+            },
+            hard: {
+                name: '困难',
+                mapSizeBonus: 2,
+                wallCountBonus: 3,
+                eventChance: 0.35,
+                positiveEventWeight: 0.45,
+                maxEvents: 3,
+                eventCooldownBase: 3,
+                stunDuration: 4000,
+                hintDistance: 1
+            }
+        };
+
+        // 成就系统配置 - 丰富成就
+        const ACHIEVEMENTS = [
+            {
+                id: 'first_step',
+                name: '初出茅庐',
+                desc: '完成第1章',
+                icon: '👣',
+                condition: (stats) => stats.maxLevel >= 2,
+                isChapterAchievement: true  // 标记为章节成就
+            },
+            {
+                id: 'survivor',
+                name: '生存者',
+                desc: '完成第5章',
+                icon: '🌟',
+                condition: (stats) => stats.maxLevel >= 6,
+                isChapterAchievement: true
+            },
+            {
+                id: 'master',
+                name: '寻光大师',
+                desc: '完成第10章',
+                icon: '👑',
+                condition: (stats) => stats.maxLevel >= 11,
+                isChapterAchievement: true
+            },
+            {
+                id: 'legend',
+                name: '传说行者',
+                desc: '完成第20章',
+                icon: '⭐',
+                condition: (stats) => stats.maxLevel >= 21,
+                isChapterAchievement: true
+            },
+            {
+                id: 'lucky_one',
+                name: '幸运儿',
+                desc: '连续遇到3次正面事件',
+                icon: '🍀',
+                condition: (stats) => stats.maxConsecutivePositive >= 3
+            },
+            {
+                id: 'unlucky_one',
+                name: '倒霉蛋',
+                desc: '连续遇到3次负面事件',
+                icon: '🌧️',
+                condition: (stats) => stats.maxConsecutiveNegative >= 3
+            },
+            {
+                id: 'speed_runner',
+                name: '速通者',
+                desc: '在困难模式下完成第3章',
+                icon: '⚡',
+                condition: (stats) => stats.hardModeMaxLevel >= 4
+            },
+            {
+                id: 'pacifist',
+                name: '和平主义者',
+                desc: '在不触发任何负面事件的情况下完成第5章',
+                icon: '🕊️',
+                condition: (stats) => stats.noNegativeRun >= 5
+            },
+            {
+                id: 'explorer',
+                name: '探索者',
+                desc: '单章移动超过50步',
+                icon: '🗺️',
+                condition: (stats) => stats.maxStepsInLevel >= 50
+            },
+            {
+                id: 'comeback',
+                name: '东山再起',
+                desc: '在被传送回起点后依然完成该章',
+                icon: '💪',
+                condition: (stats) => stats.comebackCompleted
+            },
+            {
+                id: 'night_owl',
+                name: '夜行者',
+                desc: '在困难模式下累计完成20章',
+                icon: '🦉',
+                condition: (stats) => stats.hardModeTotalLevels >= 20
+            },
+            {
+                id: 'wall_crusher',
+                name: '撞墙专家',
+                desc: '单章撞墙超过20次',
+                icon: '🧱',
+                condition: (stats) => stats.maxWallHitsInLevel >= 20
+            },
+            {
+                id: 'event_collector',
+                name: '事件收集者',
+                desc: '累计触发50次随机事件',
+                icon: '📚',
+                condition: (stats) => stats.totalEvents >= 50
+            },
+            {
+                id: 'silent_walker',
+                name: '静默行者',
+                desc: '连续5章不触发任何事件',
+                icon: '🤫',
+                condition: (stats) => stats.maxNoEventLevels >= 5
+            },
+            {
+                id: 'save_master',
+                name: '存档大师',
+                desc: '使用所有5个存档位',
+                icon: '💾',
+                condition: (stats) => stats.saveSlotsUsed >= 5
+            },
+            {
+                id: 'early_bird',
+                name: '早鸟',
+                desc: '提前解锁存档功能',
+                icon: '🔓',
+                condition: (stats) => stats.earlyUnlockSave
+            },
+            {
+                id: 'ai_helper',
+                name: '寻求帮助',
+                desc: '触发AI提示功能',
+                icon: '🤖',
+                condition: (stats) => stats.aiHintTriggered
+            },
+            {
+                id: 'marathon',
+                name: '马拉松',
+                desc: '累计移动超过1000步',
+                icon: '🏃',
+                condition: (stats) => stats.totalSteps >= 1000
+            }
+        ];
+
+        // 基础随机事件库
+        const BASE_EVENTS = {
+            positive: [
+                {
+                    id: 'police_help',
+                    title: '遇见巡警',
+                    desc: '一位巡警注意到了你，主动上前询问是否需要帮助',
+                    result: '他带你绕过了复杂的施工路段，节省了很多时间',
+                    effect: 'skip',
+                    color: 'blue',
+                    vibration: [50, 50]
+                },
+                {
+                    id: 'kind_stranger',
+                    title: '善意的陌生人',
+                    desc: '你感到迷茫时，一位路人轻轻拍了拍你的肩膀',
+                    result: '她牵着你的手，带你走过了拥挤的十字路口',
+                    effect: 'teleport',
+                    color: 'gold',
+                    vibration: [30, 30, 30]
+                },
+                {
+                    id: 'guide_dog',
+                    title: '导盲犬',
+                    desc: '一只训练有素的导盲犬出现在你身边，轻轻蹭了蹭你的腿',
+                    result: '它引导你避开了所有障碍，直达目的地附近',
+                    effect: 'guide',
+                    color: 'gold',
+                    vibration: [40, 40]
+                },
+                {
+                    id: 'volunteer',
+                    title: '志愿者',
+                    desc: '一位佩戴红袖章的志愿者发现了你的困难',
+                    result: '他耐心地为你描述周围环境，并陪你走了很长一段路',
+                    effect: 'vision',
+                    color: 'blue',
+                    vibration: [50]
+                },
+                {
+                    id: 'old_friend',
+                    title: '老友重逢',
+                    desc: '你听到了熟悉的声音，是多年未见的老友',
+                    result: '他惊喜地扶着你，两人边走边聊，不知不觉已接近目标',
+                    effect: 'teleport',
+                    color: 'gold',
+                    vibration: [30, 50, 30]
+                },
+                {
+                    id: 'shop_owner',
+                    title: '热心的店主',
+                    desc: '你撞到了一家店铺的遮阳伞，店主连忙出来查看',
+                    result: '得知你的情况后，他不但不生气，还为你指了一条近路',
+                    effect: 'shortcut',
+                    color: 'blue',
+                    vibration: [40]
+                },
+                {
+                    id: 'student_help',
+                    title: '学生志愿者',
+                    desc: '几个穿着校服的学生发现了你的困境',
+                    result: '他们轮流搀扶着你，叽叽喳喳地为你描述街景，充满朝气',
+                    effect: 'guide',
+                    color: 'blue',
+                    vibration: [30, 30, 30, 30]
+                },
+                {
+                    id: 'taxi_driver',
+                    title: '出租车司机',
+                    desc: '一辆出租车缓缓停在你身边，司机摇下车窗',
+                    result: '得知你的目的地后，他免费载你一程，说"顺路"',
+                    effect: 'teleport',
+                    color: 'gold',
+                    vibration: [60]
+                },
+                {
+                    id: 'neighbor',
+                    title: '邻居',
+                    desc: '你听到了隔壁阿姨熟悉的声音',
+                    result: '她正好要去你目的地的方向，热情地挽着你的手同行',
+                    effect: 'guide',
+                    color: 'blue',
+                    vibration: [40, 40]
+                },
+                {
+                    id: 'phone_call',
+                    title: '意外的电话',
+                    desc: '手机响了，是一位朋友打来的',
+                    result: '通过语音导航，他远程指导你避开了前方的施工区',
+                    effect: 'vision',
+                    color: 'blue',
+                    vibration: [30]
+                },
+                {
+                    id: 'street_light',
+                    title: '路灯亮起',
+                    desc: '你听到"咔哒"一声，附近的路灯突然亮了',
+                    result: '虽然仍看不清，但温暖的光线让你感到安心，脚步轻快了许多',
+                    effect: 'speed',
+                    color: 'gold',
+                    vibration: [20, 20, 20]
+                },
+                {
+                    id: 'coffee_shop',
+                    title: '咖啡店的香气',
+                    desc: '浓郁的咖啡香引导你来到一家小店门前',
+                    result: '店主递给你一杯热咖啡，暖意让你恢复了精神',
+                    effect: 'heal',
+                    color: 'blue',
+                    vibration: [40, 60]
+                }
+            ],
+            
+            negative: [
+                {
+                    id: 'fall',
+                    title: '不慎摔倒',
+                    desc: '地面有块松动的地砖，你被绊倒了',
+                    result: '膝盖擦破了皮，但一位好心人及时扶起了你',
+                    effect: 'stun',
+                    color: 'red',
+                    vibration: [200, 100, 200]
+                },
+                {
+                    id: 'construction',
+                    title: '施工路段',
+                    desc: '前方突然传来刺耳的电钻声，道路被围栏挡住了',
+                    result: '你不得不绕很远的路，迷失了方向',
+                    effect: 'confuse',
+                    color: 'red',
+                    vibration: [150, 50, 150]
+                },
+                {
+                    id: 'rain',
+                    title: '突如其来的雨',
+                    desc: '天空突然下起大雨，你无处躲避',
+                    result: '全身湿透，脚步变得沉重，速度变慢了',
+                    effect: 'slow',
+                    color: 'red',
+                    vibration: [100, 100, 100]
+                },
+                {
+                    id: 'wrong_bus',
+                    title: '上错车',
+                    desc: '你误将一辆相似的公交车当成了要坐的那班',
+                    result: '等你发现时，已经被带到了陌生的地方',
+                    effect: 'teleport_random',
+                    color: 'red',
+                    vibration: [80, 80, 80]
+                },
+                {
+                    id: 'crowd',
+                    title: '拥挤的人群',
+                    desc: '你陷入了一群匆忙赶路的上班族中',
+                    result: '被推搡着迷失了方向，完全不知道自己在哪了',
+                    effect: 'confuse',
+                    color: 'red',
+                    vibration: [60, 60, 60]
+                },
+                {
+                    id: 'bicycle',
+                    title: '飞驰的自行车',
+                    desc: '一辆共享单车从身边呼啸而过，差点撞到你',
+                    result: '你惊出一身冷汗，站在原地缓了很久才敢继续',
+                    effect: 'stun',
+                    color: 'red',
+                    vibration: [100, 200]
+                },
+                {
+                    id: 'dog_bark',
+                    title: '狂吠的犬',
+                    desc: '突然传来凶猛的狗叫声，近在咫尺',
+                    result: '你吓得连连后退，撞到了身后的墙壁',
+                    effect: 'stun',
+                    color: 'red',
+                    vibration: [150, 80, 150]
+                },
+                {
+                    id: 'lost_wallet',
+                    title: '丢失钱包',
+                    desc: '你摸向口袋，发现钱包不见了',
+                    result: '慌乱中你四处寻找，完全迷失了方向',
+                    effect: 'confuse',
+                    color: 'red',
+                    vibration: [70, 70, 70]
+                },
+                {
+                    id: 'puddle',
+                    title: '积水坑',
+                    desc: '一脚踩进冰冷的水坑，鞋子完全湿透了',
+                    result: '每走一步都发出"咯吱"声，心情跌落到谷底',
+                    effect: 'slow',
+                    color: 'red',
+                    vibration: [120, 60]
+                }
+            ]
+        };
+
+        // 额外随机事件库
+        const EXTRA_EVENTS = {
+            positive: [
+                {
+                    id: 'music_street',
+                    title: '街头音乐家',
+                    desc: '悠扬的小提琴声从前方传来，你循声走去',
+                    result: '音乐家看到你，主动为你让出了一条通道',
+                    effect: 'shortcut',
+                    color: 'gold',
+                    vibration: [30, 40, 30]
+                },
+                {
+                    id: 'morning_jogger',
+                    title: '晨跑的老人',
+                    desc: '一位精神矍铄的老人慢跑经过你身边',
+                    result: '他放慢脚步，陪你聊了一路，不知不觉接近了目标',
+                    effect: 'guide',
+                    color: 'blue',
+                    vibration: [40, 40]
+                },
+                {
+                    id: 'flower_shop',
+                    title: '花店老板娘',
+                    desc: '清新的花香让你停下脚步',
+                    result: '老板娘热情地送你一朵向日葵，并为你指了正确的方向',
+                    effect: 'vision',
+                    color: 'gold',
+                    vibration: [30, 30]
+                },
+                {
+                    id: 'security_guard',
+                    title: '小区保安',
+                    desc: '你走到了一个陌生的住宅小区门口',
+                    result: '保安大哥认出你是邻居的朋友，主动为你开了侧门',
+                    effect: 'teleport',
+                    color: 'blue',
+                    vibration: [50]
+                },
+                {
+                    id: 'delivery_guy',
+                    title: '外卖骑手',
+                    desc: '一位外卖骑手停在你面前',
+                    result: '他说正好要去你目的地的方向，让你搭了一段顺风车',
+                    effect: 'teleport',
+                    color: 'gold',
+                    vibration: [60, 40]
+                },
+                {
+                    id: 'church_bell',
+                    title: '教堂钟声',
+                    desc: '远处传来庄严的钟声，你感到内心平静',
+                    result: '宁静的心情让你思路清晰，很快找到了正确的方向',
+                    effect: 'guide',
+                    color: 'gold',
+                    vibration: [30, 30, 30]
+                },
+                {
+                    id: 'bookstore',
+                    title: '书店老板',
+                    desc: '你撞到了一家书店的玻璃门',
+                    result: '老板不但没生气，还请你进去休息，并详细为你指路',
+                    effect: 'vision',
+                    color: 'blue',
+                    vibration: [40, 50]
+                },
+                {
+                    id: 'subway_announcement',
+                    title: '地铁广播',
+                    desc: '你听到了清晰的地铁广播声',
+                    result: '循着声音找到了地铁站，工作人员热心地为你指引',
+                    effect: 'teleport',
+                    color: 'blue',
+                    vibration: [40, 30, 40]
+                }
+            ],
+            negative: [
+                {
+                    id: 'strong_wind',
+                    title: '狂风大作',
+                    desc: '突然刮起一阵大风，你几乎站不稳',
+                    result: '风把你吹得偏离了方向，完全不知道自己在哪',
+                    effect: 'confuse',
+                    color: 'red',
+                    vibration: [100, 50, 100]
+                },
+                {
+                    id: 'broken_glass',
+                    title: '碎玻璃',
+                    desc: '脚下传来"咔嚓"一声，你踩到了碎玻璃',
+                    result: '小心翼翼地避开，但耽误了很多时间',
+                    effect: 'slow',
+                    color: 'red',
+                    vibration: [80, 80]
+                },
+                {
+                    id: 'noisy_construction',
+                    title: '深夜施工',
+                    desc: '前方传来巨大的机器轰鸣声',
+                    result: '噪音让你心烦意乱，一时迷失了方向感',
+                    effect: 'confuse',
+                    color: 'red',
+                    vibration: [150, 100, 150]
+                },
+                {
+                    id: 'drunk_person',
+                    title: '醉酒的人',
+                    desc: '一个醉汉摇摇晃晃地撞到了你',
+                    result: '你被撞得后退了好几步，方向感全乱了',
+                    effect: 'teleport_random',
+                    color: 'red',
+                    vibration: [100, 100]
+                },
+                {
+                    id: 'lost_signal',
+                    title: '信号丢失',
+                    desc: '你的导航设备突然失去了信号',
+                    result: '只能凭感觉摸索，完全不知道方向',
+                    effect: 'confuse',
+                    color: 'red',
+                    vibration: [60, 60, 60]
+                },
+                {
+                    id: 'slippery_road',
+                    title: '路面结冰',
+                    desc: '路面结了薄冰，你小心翼翼地前行',
+                    result: '每一步都战战兢兢，移动速度大大降低',
+                    effect: 'slow',
+                    color: 'red',
+                    vibration: [80, 80, 80]
+                },
+                {
+                    id: 'power_outage',
+                    title: '停电',
+                    desc: '周围突然一片漆黑，连微弱的光都消失了',
+                    result: '你在黑暗中迷失了方向，需要重新摸索',
+                    effect: 'teleport_random',
+                    color: 'red',
+                    vibration: [100, 50, 100]
+                },
+                {
+                    id: 'car_honk',
+                    title: '汽车鸣笛',
+                    desc: '刺耳的喇叭声突然在耳边响起',
+                    result: '你被吓得愣在原地，好一会儿才缓过神来',
+                    effect: 'stun',
+                    color: 'red',
+                    vibration: [200, 100, 200]
+                }
+            ]
+        };
+
+        // 音频引擎
+        class AudioEngine {
+            constructor() {
+                this.ctx = null;
+                this.masterGain = null;
+                this.reverb = null;
+                this.isInitialized = false;
+                this.ambienceNodes = [];
+            }
+            
+            init() {
+                if (this.isInitialized) return;
+                
+                this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                this.masterGain = this.ctx.createGain();
+                this.masterGain.connect(this.ctx.destination);
+                this.masterGain.gain.value = 0.5;
+                
+                this.createReverb();
+                this.startAmbience();
+                this.isInitialized = true;
+            }
+            
+            createReverb() {
+                const convolver = this.ctx.createConvolver();
+                const rate = this.ctx.sampleRate;
+                const length = rate * 2;
+                const impulse = this.ctx.createBuffer(2, length, rate);
+                
+                for (let channel = 0; channel < 2; channel++) {
+                    const channelData = impulse.getChannelData(channel);
+                    for (let i = 0; i < length; i++) {
+                        channelData[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, 2);
+                    }
+                }
+                
+                convolver.buffer = impulse;
+                this.reverb = convolver;
+            }
+            
+            startAmbience() {
+                const createDrone = (freq, gainVal, panVal) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    const panner = this.ctx.createStereoPanner();
+                    
+                    osc.type = 'sine';
+                    osc.frequency.value = freq;
+                    
+                    const lfo = this.ctx.createOscillator();
+                    const lfoGain = this.ctx.createGain();
+                    lfo.frequency.value = 0.1 + Math.random() * 0.2;
+                    lfoGain.gain.value = 2;
+                    lfo.connect(lfoGain);
+                    lfoGain.connect(osc.frequency);
+                    lfo.start();
+                    
+                    gain.gain.value = gainVal;
+                    panner.pan.value = panVal;
+                    
+                    osc.connect(panner);
+                    panner.connect(gain);
+                    gain.connect(this.masterGain);
+                    
+                    osc.start();
+                    this.ambienceNodes.push({osc, gain, lfo, lfoGain});
+                };
+                
+                createDrone(60, 0.08, -0.5);
+                createDrone(62, 0.06, 0.5);
+                createDrone(55, 0.05, 0);
+                
+                const bufferSize = 2 * this.ctx.sampleRate;
+                const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                const output = noiseBuffer.getChannelData(0);
+                
+                for (let i = 0; i < bufferSize; i++) {
+                    output[i] = Math.random() * 2 - 1;
+                }
+                
+                const noise = this.ctx.createBufferSource();
+                noise.buffer = noiseBuffer;
+                noise.loop = true;
+                
+                const noiseFilter = this.ctx.createBiquadFilter();
+                noiseFilter.type = 'lowpass';
+                noiseFilter.frequency.value = 200;
+                noiseFilter.Q.value = 0.5;
+                
+                const noiseGain = this.ctx.createGain();
+                noiseGain.gain.value = 0.02;
+                
+                noise.connect(noiseFilter);
+                noiseFilter.connect(noiseGain);
+                noiseGain.connect(this.masterGain);
+                noise.start();
+                
+                this.ambienceNodes.push({noise, noiseFilter, noiseGain});
+            }
+            
+            playEcho(distance, direction) {
+                const now = this.ctx.currentTime;
+                
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                const filter = this.ctx.createBiquadFilter();
+                const panner = this.ctx.createStereoPanner();
+                
+                const freq = 1000 - (distance * 150);
+                osc.frequency.setValueAtTime(Math.max(400, freq), now);
+                osc.frequency.exponentialRampToValueAtTime(Math.max(200, freq * 0.6), now + 0.15);
+                
+                osc.type = 'sine';
+                
+                if (direction === 'left') panner.pan.value = -0.8;
+                else if (direction === 'right') panner.pan.value = 0.8;
+                else panner.pan.value = 0;
+                
+                filter.type = 'lowpass';
+                filter.frequency.value = 2000 - (distance * 300);
+                filter.Q.value = 5 + (3 - distance);
+                
+                const vol = Math.max(0.1, 0.4 / (distance + 0.5));
+                gain.gain.setValueAtTime(0, now);
+                gain.gain.linearRampToValueAtTime(vol, now + 0.02);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2 + (distance * 0.05));
+                
+                osc.connect(filter);
+                filter.connect(panner);
+                panner.connect(gain);
+                gain.connect(this.masterGain);
+                
+                const reverbGain = this.ctx.createGain();
+                reverbGain.gain.value = vol * 0.3;
+                panner.connect(reverbGain);
+                reverbGain.connect(this.reverb);
+                this.reverb.connect(this.masterGain);
+                
+                osc.start(now);
+                osc.stop(now + 0.5);
+                
+                setTimeout(() => {
+                    reverbGain.disconnect();
+                }, 500);
+            }
+            
+            playStep() {
+                const now = this.ctx.currentTime;
+                
+                const bufferSize = this.ctx.sampleRate * 0.1;
+                const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                
+                for (let i = 0; i < bufferSize; i++) {
+                    const white = Math.random() * 2 - 1;
+                    data[i] = (white + data[i-1] || 0) * 0.5;
+                }
+                
+                const noise = this.ctx.createBufferSource();
+                noise.buffer = buffer;
+                
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'bandpass';
+                filter.frequency.value = 150;
+                filter.Q.value = 1;
+                
+                const gain = this.ctx.createGain();
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+                
+                noise.connect(filter);
+                filter.connect(gain);
+                gain.connect(this.masterGain);
+                
+                noise.start(now);
+            }
+            
+            playBump() {
+                const now = this.ctx.currentTime;
+                
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                const filter = this.ctx.createBiquadFilter();
+                
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(150, now);
+                osc.frequency.exponentialRampToValueAtTime(40, now + 0.2);
+                
+                filter.type = 'lowpass';
+                filter.frequency.value = 800;
+                filter.Q.value = 5;
+                
+                gain.gain.setValueAtTime(0.4, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+                
+                osc.connect(filter);
+                filter.connect(gain);
+                gain.connect(this.masterGain);
+                
+                osc.start(now);
+                osc.stop(now + 0.25);
+                
+                const metalOsc = this.ctx.createOscillator();
+                const metalGain = this.ctx.createGain();
+                metalOsc.type = 'square';
+                metalOsc.frequency.value = 800;
+                metalGain.gain.setValueAtTime(0.1, now);
+                metalGain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+                metalOsc.connect(metalGain);
+                metalGain.connect(this.masterGain);
+                metalOsc.start(now);
+                metalOsc.stop(now + 0.1);
+            }
+            
+            playPositiveEvent() {
+                const now = this.ctx.currentTime;
+                const notes = [523.25, 659.25, 783.99, 1046.50];
+                
+                notes.forEach((freq, i) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    const filter = this.ctx.createBiquadFilter();
+                    
+                    osc.type = 'sine';
+                    osc.frequency.value = freq;
+                    
+                    filter.type = 'lowpass';
+                    filter.frequency.value = 2000;
+                    
+                    gain.gain.setValueAtTime(0, now + i * 0.08);
+                    gain.gain.linearRampToValueAtTime(0.12, now + i * 0.08 + 0.05);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.08 + 1.2);
+                    
+                    osc.connect(filter);
+                    filter.connect(gain);
+                    gain.connect(this.masterGain);
+                    
+                    osc.start(now + i * 0.08);
+                    osc.stop(now + i * 0.08 + 1.5);
+                });
+                
+                const sparkle = this.ctx.createOscillator();
+                const sparkleGain = this.ctx.createGain();
+                sparkle.type = 'triangle';
+                sparkle.frequency.setValueAtTime(2000, now);
+                sparkle.frequency.linearRampToValueAtTime(3000, now + 0.5);
+                sparkleGain.gain.setValueAtTime(0.05, now);
+                sparkleGain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+                sparkle.connect(sparkleGain);
+                sparkleGain.connect(this.masterGain);
+                sparkle.start(now);
+                sparkle.stop(now + 0.5);
+            }
+            
+            playNegativeEvent() {
+                const now = this.ctx.currentTime;
+                
+                const osc1 = this.ctx.createOscillator();
+                const osc2 = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                
+                osc1.type = 'sawtooth';
+                osc2.type = 'square';
+                osc1.frequency.setValueAtTime(200, now);
+                osc1.frequency.linearRampToValueAtTime(100, now + 0.4);
+                osc2.frequency.setValueAtTime(150, now);
+                osc2.frequency.linearRampToValueAtTime(80, now + 0.4);
+                
+                gain.gain.setValueAtTime(0.25, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+                
+                osc1.connect(gain);
+                osc2.connect(gain);
+                gain.connect(this.masterGain);
+                
+                osc1.start(now);
+                osc2.start(now);
+                osc1.stop(now + 0.5);
+                osc2.stop(now + 0.5);
+                
+                const bufferSize = this.ctx.sampleRate * 0.2;
+                const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = Math.random() * 2 - 1;
+                }
+                const noise = this.ctx.createBufferSource();
+                noise.buffer = buffer;
+                const noiseFilter = this.ctx.createBiquadFilter();
+                noiseFilter.type = 'lowpass';
+                noiseFilter.frequency.value = 600;
+                const noiseGain = this.ctx.createGain();
+                noiseGain.gain.setValueAtTime(0.15, now);
+                noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+                noise.connect(noiseFilter);
+                noiseFilter.connect(noiseGain);
+                noiseGain.connect(this.masterGain);
+                noise.start(now);
+            }
+            
+            playLightFound() {
+                const now = this.ctx.currentTime;
+                
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(440, now);
+                osc.frequency.exponentialRampToValueAtTime(880, now + 1.5);
+                
+                gain.gain.setValueAtTime(0, now);
+                gain.gain.linearRampToValueAtTime(0.4, now + 1.5);
+                gain.gain.linearRampToValueAtTime(0.3, now + 3);
+                
+                osc.connect(gain);
+                gain.connect(this.masterGain);
+                osc.start(now);
+                osc.stop(now + 3);
+                
+                const chordFreqs = [523.25, 659.25, 783.99];
+                chordFreqs.forEach((freq, i) => {
+                    const chordOsc = this.ctx.createOscillator();
+                    const chordGain = this.ctx.createGain();
+                    chordOsc.type = 'triangle';
+                    chordOsc.frequency.value = freq;
+                    chordGain.gain.setValueAtTime(0, now + i * 0.2);
+                    chordGain.gain.linearRampToValueAtTime(0.15, now + i * 0.2 + 0.5);
+                    chordGain.gain.linearRampToValueAtTime(0, now + 2.5);
+                    chordOsc.connect(chordGain);
+                    chordGain.connect(this.masterGain);
+                    chordOsc.start(now + i * 0.2);
+                    chordOsc.stop(now + 2.5);
+                });
+                
+                const sparkle = this.ctx.createOscillator();
+                const sparkleGain = this.ctx.createGain();
+                sparkle.type = 'sine';
+                sparkle.frequency.setValueAtTime(2000, now);
+                sparkle.frequency.linearRampToValueAtTime(4000, now + 2);
+                sparkleGain.gain.setValueAtTime(0.1, now);
+                sparkleGain.gain.linearRampToValueAtTime(0, now + 2);
+                sparkle.connect(sparkleGain);
+                sparkleGain.connect(this.masterGain);
+                sparkle.start(now);
+                sparkle.stop(now + 2);
+            }
+            
+            playDarknessReturns() {
+                const now = this.ctx.currentTime;
+                
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(880, now);
+                osc.frequency.exponentialRampToValueAtTime(220, now + 2);
+                
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.linearRampToValueAtTime(0, now + 2);
+                
+                osc.connect(gain);
+                gain.connect(this.masterGain);
+                osc.start(now);
+                osc.stop(now + 2);
+                
+                const dissonance = this.ctx.createOscillator();
+                const disGain = this.ctx.createGain();
+                dissonance.type = 'sawtooth';
+                dissonance.frequency.value = 100;
+                disGain.gain.setValueAtTime(0.1, now);
+                disGain.gain.linearRampToValueAtTime(0, now + 1.5);
+                dissonance.connect(disGain);
+                disGain.connect(this.masterGain);
+                dissonance.start(now);
+                dissonance.stop(now + 1.5);
+            }
+            
+            playAIHint() {
+                const now = this.ctx.currentTime;
+                
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(600, now);
+                osc.frequency.exponentialRampToValueAtTime(800, now + 0.3);
+                
+                gain.gain.setValueAtTime(0, now);
+                gain.gain.linearRampToValueAtTime(0.15, now + 0.1);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+                
+                osc.connect(gain);
+                gain.connect(this.masterGain);
+                osc.start(now);
+                osc.stop(now + 0.5);
+            }
+            
+            speak(text) {
+                if ('speechSynthesis' in window) {
+                    window.speechSynthesis.cancel();
+                    const u = new SpeechSynthesisUtterance(text);
+                    u.lang = 'zh-CN';
+                    u.rate = 0.9;
+                    u.pitch = 0.95;
+                    u.volume = 0.8;
+                    window.speechSynthesis.speak(u);
+                }
+            }
+        }
+
+        // 游戏逻辑
+        class Game {
+            constructor() {
+                this.audio = new AudioEngine();
+                this.level = 1;
+                this.player = { x: 1, y: 1 };
+                this.goal = { x: 5, y: 5 };
+                this.walls = [];
+                this.state = 'start';
+                this.visited = new Set();
+                this.isLightFound = false;
+                this.difficulty = 'medium';
+                this.config = DIFFICULTY_CONFIG.medium;
+                
+                // 统计与成就
+                this.stats = {
+                    maxLevel: 1,
+                    maxConsecutivePositive: 0,
+                    maxConsecutiveNegative: 0,
+                    hardModeMaxLevel: 0,
+                    noNegativeRun: 0,
+                    maxStepsInLevel: 0,
+                    comebackCompleted: false,
+                    hardModeTotalLevels: 0,
+                    currentConsecutivePositive: 0,
+                    currentConsecutiveNegative: 0,
+                    currentLevelNegativeEvents: 0,
+                    currentLevelSteps: 0,
+                    wasTeleported: false,
+                    maxWallHitsInLevel: 0,
+                    currentLevelWallHits: 0,
+                    totalEvents: 0,
+                    maxNoEventLevels: 0,
+                    consecutiveNoEventLevels: 0,
+                    saveSlotsUsed: 0,
+                    earlyUnlockSave: false,
+                    aiHintTriggered: false,
+                    totalSteps: 0
+                };
+                
+                // 章节成就单独存储（读取存档时不重置）
+                this.chapterAchievements = new Set();
+                this.unlockedAchievements = new Set();
+                this.newAchievements = new Set();
+                this.saveSlots = [];
+                
+                // 事件系统
+                this.eventsTriggered = 0;
+                this.eventCooldown = 0;
+                this.isStunned = false;
+                this.hasGuidance = false;
+                this.waitingForContinue = false;
+                this.pendingEvent = null;
+                
+                // 额外事件开关
+                this.extraEventsEnabled = false;
+                
+                // AI提示系统
+                this.lastClickTime = Date.now();
+                this.aiHintTimer = null;
+                this.aiHintCooldown = false;
+                
+                // 光字点击计数
+                this.guangClickCount = 0;
+                this.saveUnlockedEarly = false;
+                
+                this.ui = {
+                    main: document.getElementById('main-text'),
+                    sub: document.getElementById('sub-text'),
+                    overlay: document.getElementById('status-overlay'),
+                    vib: document.getElementById('vib-indicator'),
+                    chapter: document.getElementById('chapter-indicator'),
+                    eventBadge: document.getElementById('event-badge'),
+                    continueHint: document.getElementById('continue-hint'),
+                    body: document.body,
+                    difficultyDisplay: document.getElementById('current-difficulty'),
+                    achievementsBtn: document.getElementById('achievements-btn'),
+                    homeBtn: document.getElementById('home-btn'),
+                    saveBtn: document.getElementById('save-btn'),
+                    gameSaveBtn: document.getElementById('game-save-btn'),
+                    aiHint: document.getElementById('ai-hint'),
+                    extraEventsToggle: document.getElementById('extra-events-toggle')
+                };
+                
+                this.loadData();
+                this.init();
+                this.updateSaveButtonState();
+            }
+            
+            init() {
+                this.setupControls();
+                this.setupDifficulty();
+                this.generateMap();
+                this.renderAchievements();
+                this.renderSaveSlots();
+                this.setupModalScroll();
+                this.loadExtraEventsSetting();
+            }
+            
+            loadExtraEventsSetting() {
+                const setting = localStorage.getItem('xunguang_extraEvents');
+                if (setting === 'true') {
+                    this.extraEventsEnabled = true;
+                    this.ui.extraEventsToggle.classList.add('active');
+                }
+            }
+            
+            toggleExtraEvents() {
+                this.extraEventsEnabled = !this.extraEventsEnabled;
+                this.ui.extraEventsToggle.classList.toggle('active');
+                localStorage.setItem('xunguang_extraEvents', this.extraEventsEnabled);
+            }
+            
+            onGuangClick() {
+                this.guangClickCount++;
+                if (this.guangClickCount >= 10 && !this.saveUnlockedEarly) {
+                    this.saveUnlockedEarly = true;
+                    this.stats.earlyUnlockSave = true;
+                    this.saveAchievementData();
+                    this.checkAchievements();
+                    this.updateSaveButtonState();
+                    this.showAlert('恭喜！你发现了隐藏彩蛋！\n存档功能已提前解锁！');
+                    document.querySelector('.guang-char').classList.add('unlocked');
+                }
+            }
+            
+            loadData() {
+                this.loadAllData();
+            }
+            
+            saveData() {
+                localStorage.setItem('xunguang_saveSlots', JSON.stringify({
+                    saveSlots: this.saveSlots
+                }));
+            }
+
+            saveAchievementData() {
+                localStorage.setItem('xunguang_achievements', JSON.stringify({
+                    unlocked: Array.from(this.unlockedAchievements),
+                    chapterAchievements: Array.from(this.chapterAchievements),
+                    stats: this.stats
+                }));
+            }
+
+            loadAllData() {
+                const saveData = localStorage.getItem('xunguang_saveSlots');
+                if (saveData) {
+                    const data = JSON.parse(saveData);
+                    this.saveSlots = data.saveSlots || [];
+                    this.stats.saveSlotsUsed = this.saveSlots.filter(s => s).length;
+                }
+
+                const achData = localStorage.getItem('xunguang_achievements');
+                if (achData) {
+                    const data = JSON.parse(achData);
+                    this.unlockedAchievements = new Set(data.unlocked || []);
+                    this.chapterAchievements = new Set(data.chapterAchievements || []);
+                    this.stats = { ...this.stats, ...data.stats };
+                    if (this.stats.earlyUnlockSave) {
+                        this.saveUnlockedEarly = true;
+                        document.querySelector('.guang-char').classList.add('unlocked');
+                    }
+                }
+            }
+            
+            checkAchievements() {
+                let newUnlock = false;
+                ACHIEVEMENTS.forEach(ach => {
+                    // 章节成就单独处理
+                    if (ach.isChapterAchievement) {
+                        if (!this.chapterAchievements.has(ach.id) && ach.condition(this.stats)) {
+                            this.chapterAchievements.add(ach.id);
+                            this.unlockedAchievements.add(ach.id);
+                            this.newAchievements.add(ach.id);
+                            newUnlock = true;
+                        }
+                    } else {
+                        if (!this.unlockedAchievements.has(ach.id) && ach.condition(this.stats)) {
+                            this.unlockedAchievements.add(ach.id);
+                            this.newAchievements.add(ach.id);
+                            newUnlock = true;
+                        }
+                    }
+                });
+                
+                if (newUnlock) {
+                    this.saveAchievementData();
+                    this.ui.achievementsBtn.classList.add('has-new');
+                    this.renderAchievements();
+                    this.updateSaveButtonState();
+                }
+            }
+            
+            // 重置所有成就
+            resetAchievements() {
+                if (confirm('确定要重置所有成就吗？此操作不可恢复。')) {
+                    this.unlockedAchievements.clear();
+                    this.chapterAchievements.clear();
+                    this.newAchievements.clear();
+                    this.ui.achievementsBtn.classList.remove('has-new');
+                    
+                    // 重置统计数据
+                    this.stats = {
+                        maxLevel: 1,
+                        maxConsecutivePositive: 0,
+                        maxConsecutiveNegative: 0,
+                        hardModeMaxLevel: 0,
+                        noNegativeRun: 0,
+                        maxStepsInLevel: 0,
+                        comebackCompleted: false,
+                        hardModeTotalLevels: 0,
+                        currentConsecutivePositive: 0,
+                        currentConsecutiveNegative: 0,
+                        currentLevelNegativeEvents: 0,
+                        currentLevelSteps: 0,
+                        wasTeleported: false,
+                        maxWallHitsInLevel: 0,
+                        currentLevelWallHits: 0,
+                        totalEvents: 0,
+                        maxNoEventLevels: 0,
+                        consecutiveNoEventLevels: 0,
+                        saveSlotsUsed: this.saveSlots.filter(s => s).length,
+                        earlyUnlockSave: false,
+                        aiHintTriggered: false,
+                        totalSteps: 0
+                    };
+                    
+                    this.saveUnlockedEarly = false;
+                    document.querySelector('.guang-char').classList.remove('unlocked');
+                    
+                    this.saveAchievementData();
+                    this.renderAchievements();
+                    this.updateSaveButtonState();
+                    this.showAlert('成就已重置');
+                }
+            }
+            
+            updateSaveButtonState() {
+                const canSave = this.stats.maxLevel >= 11 || this.saveUnlockedEarly;
+                this.ui.saveBtn.disabled = !canSave;
+                this.ui.saveBtn.title = canSave ? '存档' : '完成第10章后解锁存档功能';
+            }
+            
+            renderAchievements() {
+                const container = document.getElementById('achievements-list');
+                container.innerHTML = ACHIEVEMENTS.map(ach => {
+                    const unlocked = this.unlockedAchievements.has(ach.id);
+                    const isNew = this.newAchievements.has(ach.id);
+                    return `
+                        <div class="achievement-item ${unlocked ? 'unlocked' : ''} ${isNew ? 'new' : ''}">
+                            <div class="achievement-icon">${ach.icon}</div>
+                            <div class="achievement-info">
+                                <div class="achievement-name">${ach.name}</div>
+                                <div class="achievement-desc">${ach.desc}</div>
+                            </div>
+                            <div class="achievement-status">${unlocked ? '已解锁' : '未解锁'}</div>
+                        </div>
+                    `;
+                }).join('');
+            }
+            
+            renderSaveSlots() {
+                const container = document.getElementById('save-slots');
+                const slots = [];
+                
+                for (let i = 0; i < 5; i++) {
+                    const save = this.saveSlots[i];
+                    if (save) {
+                        const date = new Date(save.timestamp);
+                        const timeStr = `${date.getMonth()+1}/${date.getDate()} ${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')}`;
+                        slots.push(`
+                            <div class="save-slot">
+                                <div class="save-info">
+                                    <div class="save-chapter">第 ${save.level} 章 - ${DIFFICULTY_CONFIG[save.difficulty].name}难度</div>
+                                    <div class="save-time">${timeStr}</div>
+                                </div>
+                                <div class="save-actions">
+                                    <button class="save-action-btn delete-btn" onclick="game.deleteSave(${i}); event.stopPropagation();">删除</button>
+                                    <button class="save-action-btn save-btn" onclick="game.createSave(${i}); event.stopPropagation();">保存</button>
+                                    <button class="save-action-btn load-btn" onclick="game.loadSave(${i}); event.stopPropagation();">读取</button>
+                                </div>
+                            </div>
+                        `);
+                    } else {
+                        slots.push(`
+                            <div class="save-slot empty">
+                                <div class="save-info">
+                                    <div class="save-chapter">存档位 ${i + 1}</div>
+                                    <div class="save-time">空</div>
+                                </div>
+                                <div class="save-actions">
+                                    <button class="save-action-btn save-btn" onclick="game.createSave(${i}); event.stopPropagation();">保存</button>
+                                </div>
+                            </div>
+                        `);
+                    }
+                }
+                
+                container.innerHTML = slots.join('');
+            }
+            
+            // 删除存档
+            deleteSave(slotIndex) {
+                if (confirm(`确定要删除存档位 ${slotIndex + 1} 吗？`)) {
+                    this.saveSlots[slotIndex] = null;
+                    this.stats.saveSlotsUsed = this.saveSlots.filter(s => s).length;
+                    this.saveData();
+                    this.saveAchievementData();
+                    this.checkAchievements();
+                    this.renderSaveSlots();
+                    this.showAlert(`存档位 ${slotIndex + 1} 已删除`);
+                }
+            }
+            
+            createSave(slotIndex) {
+                this.saveSlots[slotIndex] = {
+                    level: this.level,
+                    difficulty: this.difficulty,
+                    timestamp: Date.now()
+                };
+                this.stats.saveSlotsUsed = this.saveSlots.filter(s => s).length;
+                this.saveData();
+                this.saveAchievementData();
+                this.checkAchievements();
+                this.renderSaveSlots();
+                this.showAlert(`已保存至存档位 ${slotIndex + 1}`);
+            }
+            
+            loadSave(slotIndex) {
+                const save = this.saveSlots[slotIndex];
+                if (!save) return;
+                
+                this.closeModals();
+                this.level = save.level;
+                this.difficulty = save.difficulty;
+                this.config = DIFFICULTY_CONFIG[this.difficulty];
+                
+                document.querySelectorAll('.difficulty-btn').forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.diff === this.difficulty);
+                });
+                
+                this.generateMap();
+                this.ui.chapter.textContent = `第 ${this.level} 章`;
+                this.ui.difficultyDisplay.textContent = this.config.name + '难度';
+                
+                this.showAlert(`已加载存档：第 ${save.level} 章`);
+                
+                if (this.state === 'start') {
+                    this.start();
+                } else {
+                    this.scan();
+                }
+            }
+            
+            showHelp() {
+                const modal = document.getElementById('help-modal');
+                modal.style.display = 'flex';
+                setTimeout(() => modal.classList.add('show'), 10);
+            }
+            
+            showAchievements() {
+                this.newAchievements.clear();
+                this.ui.achievementsBtn.classList.remove('has-new');
+                this.saveAchievementData();
+                const modal = document.getElementById('achievements-modal');
+                modal.style.display = 'flex';
+                setTimeout(() => modal.classList.add('show'), 10);
+                this.renderAchievements();
+            }
+            
+            showSaveMenu() {
+                const canSave = this.stats.maxLevel >= 11 || this.saveUnlockedEarly;
+                if (!canSave) {
+                    this.showAlert('完成第10章后解锁存档功能！\n当前最高记录：第' + (this.stats.maxLevel - 1) + '章');
+                    return;
+                }
+                this.renderSaveSlots();
+                const modal = document.getElementById('save-modal');
+                modal.style.display = 'flex';
+                setTimeout(() => modal.classList.add('show'), 10);
+            }
+            
+            showAlert(message) {
+                const modal = document.getElementById('alert-modal');
+                const msgEl = document.getElementById('alert-message');
+                msgEl.textContent = message;
+                modal.style.display = 'flex';
+                setTimeout(() => modal.classList.add('show'), 10);
+            }
+            
+            closeModals(e) {
+                if (!e || e.target.classList.contains('modal-overlay') || e.target.classList.contains('modal-close')) {
+                    document.querySelectorAll('.modal-overlay').forEach(m => {
+                        m.classList.remove('show');
+                        setTimeout(() => { m.style.display = ''; }, 300);
+                    });
+                }
+            }
+            
+            // 恢复2.2版本弹窗触控滑动逻辑
+            setupModalScroll() {
+                // 修复弹窗触控滑动 - 使用更流畅的实现
+                const modals = document.querySelectorAll('.modal-content');
+                modals.forEach(modal => {
+                    let startY = 0;
+                    let startScrollTop = 0;
+                    let isScrolling = false;
+
+                    modal.addEventListener('touchstart', (e) => {
+                        startY = e.touches[0].clientY;
+                        startScrollTop = modal.scrollTop;
+                        isScrolling = true;
+                    }, { passive: true });
+
+                    modal.addEventListener('touchmove', (e) => {
+                        if (!isScrolling) return;
+                        const y = e.touches[0].clientY;
+                        const deltaY = startY - y;
+                        modal.scrollTop = startScrollTop + deltaY;
+                    }, { passive: true });
+
+                    modal.addEventListener('touchend', () => {
+                        isScrolling = false;
+                    }, { passive: true });
+
+                    // 阻止弹窗内容区域的touch事件冒泡到遮罩层
+                    modal.addEventListener('touchstart', (e) => {
+                        e.stopPropagation();
+                    }, { passive: true });
+                });
+
+                // 点击遮罩层关闭弹窗
+                document.querySelectorAll('.modal-overlay').forEach(overlay => {
+                    overlay.addEventListener('click', (e) => {
+                        if (e.target === overlay) {
+                            this.closeModals();
+                        }
+                    });
+                });
+            }
+            
+            returnToHome() {
+                if (confirm('确定要返回主页吗？未手动存档的进度将丢失。')) {
+                    this.state = 'start';
+                    this.ui.homeBtn.classList.remove('show');
+                    this.ui.gameSaveBtn.classList.remove('show');
+                    document.getElementById('start-screen').classList.remove('hidden');
+                    this.ui.body.classList.remove('light-found');
+                    this.level = 1;
+                    this.ui.chapter.textContent = '第 1 章';
+                    this.ui.difficultyDisplay.classList.remove('show');
+                    this.stopAIHintTimer();
+                    this.generateMap();
+                }
+            }
+            
+            setupDifficulty() {
+                const buttons = document.querySelectorAll('.difficulty-btn');
+                buttons.forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        buttons.forEach(b => b.classList.remove('active'));
+                        btn.classList.add('active');
+                        this.difficulty = btn.dataset.diff;
+                        this.config = DIFFICULTY_CONFIG[this.difficulty];
+                    });
+                });
+            }
+            
+            setupControls() {
+                document.querySelectorAll('.dir-btn').forEach(btn => {
+                    btn.addEventListener('touchstart', (e) => {
+                        e.preventDefault();
+                        this.handleInput('move', btn.dataset.dir);
+                    });
+                    btn.addEventListener('mousedown', (e) => {
+                        e.preventDefault();
+                        this.handleInput('move', btn.dataset.dir);
+                    });
+                });
+                
+                document.addEventListener('keydown', (e) => {
+                    if (this.state !== 'playing') return;
+                    switch(e.key) {
+                        case 'ArrowUp': case 'w': case 'W': this.handleInput('move', 'up'); break;
+                        case 'ArrowDown': case 's': case 'S': this.handleInput('move', 'down'); break;
+                        case 'ArrowLeft': case 'a': case 'A': this.handleInput('move', 'left'); break;
+                        case 'ArrowRight': case 'd': case 'D': this.handleInput('move', 'right'); break;
+                        case ' ': case 'Enter': this.handleInput('continue'); break;
+                    }
+                });
+                
+                document.addEventListener('click', (e) => {
+                    if (e.target.closest('.dir-btn') || e.target.closest('#start-btn') || 
+                        e.target.closest('.difficulty-btn') || e.target.closest('#help-btn') || 
+                        e.target.closest('#achievements-btn') || e.target.closest('#save-btn') || 
+                        e.target.closest('#home-btn') || e.target.closest('#game-save-btn') ||
+                        e.target.closest('.modal-content')) return;
+                    this.handleInput('continue');
+                });
+                
+                document.addEventListener('touchstart', (e) => {
+                    if (e.target.closest('.dir-btn') || e.target.closest('#start-btn') || 
+                        e.target.closest('.difficulty-btn') || e.target.closest('#help-btn') || 
+                        e.target.closest('#achievements-btn') || e.target.closest('#save-btn') || 
+                        e.target.closest('#home-btn') || e.target.closest('#game-save-btn') ||
+                        e.target.closest('.modal-content')) return;
+                    this.handleInput('continue');
+                });
+                
+                document.getElementById('start-btn').addEventListener('click', () => {
+                    this.start();
+                });
+            }
+            
+            handleInput(type, data) {
+                if (this.state !== 'playing') return;
+                
+                // 重置AI提示计时器
+                this.resetAIHintTimer();
+                
+                if (this.waitingForContinue) {
+                    if (type === 'continue') {
+                        this.continueEvent();
+                    }
+                    return;
+                }
+                
+                if (type === 'move') {
+                    this.handleMove(data);
+                }
+            }
+            
+            resetAIHintTimer() {
+                this.lastClickTime = Date.now();
+                if (this.aiHintTimer) {
+                    clearTimeout(this.aiHintTimer);
+                }
+                if (this.state === 'playing' && !this.waitingForContinue && !this.isStunned) {
+                    this.aiHintTimer = setTimeout(() => this.showAIHint(), 20000);
+                }
+            }
+            
+            stopAIHintTimer() {
+                if (this.aiHintTimer) {
+                    clearTimeout(this.aiHintTimer);
+                    this.aiHintTimer = null;
+                }
+            }
+            
+            showAIHint() {
+                if (this.state !== 'playing' || this.waitingForContinue || this.isStunned || this.aiHintCooldown) return;
+                
+                const dx = this.goal.x - this.player.x;
+                const dy = this.goal.y - this.player.y;
+                let hint = '';
+                
+                if (Math.abs(dx) > Math.abs(dy)) {
+                    hint = dx > 0 ? '往右走' : '往左走';
+                } else {
+                    hint = dy > 0 ? '往下走' : '往上走';
+                }
+                
+                if (dx === 0 && dy === 0) return;
+                
+                this.stats.aiHintTriggered = true;
+                this.saveAchievementData();
+                this.checkAchievements();
+                
+                this.ui.aiHint.textContent = `AI提示：${hint}`;
+                this.ui.aiHint.classList.add('show');
+                this.audio.playAIHint();
+                
+                this.aiHintCooldown = true;
+                
+                setTimeout(() => {
+                    this.ui.aiHint.classList.remove('show');
+                }, 3000);
+                
+                setTimeout(() => {
+                    this.aiHintCooldown = false;
+                }, 30000); // 30秒冷却
+            }
+            
+            generateMap() {
+                this.walls = [];
+                const size = Math.max(5, 6 + this.level + this.config.mapSizeBonus);
+
+                // 创建边界墙
+                for (let i = 0; i < size; i++) {
+                    this.walls.push({x: i, y: 0}, {x: i, y: size-1});
+                    this.walls.push({x: 0, y: i}, {x: size-1, y: i});
+                }
+
+                this.player = { x: 1, y: 1 };
+                this.goal = { x: size-2, y: size-2 };
+
+                // 生成随机墙，确保可达性
+                const count = Math.max(0, 3 + this.level * 2 + this.config.wallCountBonus);
+                let attempts = 0;
+                const maxAttempts = count * 20;
+
+                while (this.walls.length < 4 * size + count && attempts < maxAttempts) {
+                    attempts++;
+                    const x = Math.floor(Math.random() * (size-2)) + 1;
+                    const y = Math.floor(Math.random() * (size-2)) + 1;
+
+                    // 不能阻挡起点和终点
+                    if ((x === 1 && y === 1) || (x === size-2 && y === size-2)) continue;
+
+                    // 检查是否已存在
+                    if (this.walls.some(w => w.x === x && w.y === y)) continue;
+
+                    // 临时添加墙并检查可达性
+                    this.walls.push({x, y});
+                    if (!this.isPathExists(1, 1, size-2, size-2)) {
+                        // 不可达，移除墙
+                        const idx = this.walls.findIndex(w => w.x === x && w.y === y);
+                        if (idx !== -1) this.walls.splice(idx, 1);
+                    }
+                }
+
+                this.visited.clear();
+                this.visited.add('1,1');
+
+                this.eventsTriggered = 0;
+                this.eventCooldown = this.config.eventCooldownBase;
+                this.isStunned = false;
+                this.hasGuidance = false;
+                this.waitingForContinue = false;
+                this.pendingEvent = null;
+
+                this.stats.currentLevelNegativeEvents = 0;
+                this.stats.currentLevelSteps = 0;
+                this.stats.currentLevelWallHits = 0;
+                this.stats.wasTeleported = false;
+            }
+
+            // BFS检查路径是否存在
+            isPathExists(startX, startY, goalX, goalY) {
+                const size = Math.max(5, 6 + this.level + this.config.mapSizeBonus);
+                const visited = new Set();
+                const queue = [{x: startX, y: startY}];
+                visited.add(`${startX},${startY}`);
+
+                const directions = [[0, 1], [0, -1], [1, 0], [-1, 0]];
+
+                while (queue.length > 0) {
+                    const {x, y} = queue.shift();
+
+                    if (x === goalX && y === goalY) return true;
+
+                    for (const [dx, dy] of directions) {
+                        const nx = x + dx;
+                        const ny = y + dy;
+                        const key = `${nx},${ny}`;
+
+                        if (nx < 0 || nx >= size || ny < 0 || ny >= size) continue;
+                        if (visited.has(key)) continue;
+                        if (this.walls.some(w => w.x === nx && w.y === ny)) continue;
+
+                        visited.add(key);
+                        queue.push({x: nx, y: ny});
+                    }
+                }
+
+                return false;
+            }
+            
+            start() {
+                document.getElementById('start-screen').classList.add('hidden');
+                this.ui.homeBtn.classList.add('show');
+                this.ui.gameSaveBtn.classList.add('show');
+                this.ui.difficultyDisplay.textContent = this.config.name + '难度';
+                this.ui.difficultyDisplay.classList.add('show');
+                this.audio.init();
+                this.state = 'playing';
+                
+                this.resetAIHintTimer();
+                
+                setTimeout(() => {
+                    this.narrate("黑暗", "你在一片虚无中醒来，前方充满未知");
+                    this.scan();
+                }, 800);
+            }
+            
+            handleMove(direction) {
+                if (this.isStunned) {
+                    this.narrate("你还处于恍惚中", "稍等片刻才能继续移动");
+                    return;
+                }
+                
+                let dx = 0, dy = 0;
+                switch(direction) {
+                    case 'up': dy = -1; break;
+                    case 'down': dy = 1; break;
+                    case 'left': dx = -1; break;
+                    case 'right': dx = 1; break;
+                }
+                
+                const newX = this.player.x + dx;
+                const newY = this.player.y + dy;
+                
+                const hitWall = this.walls.some(w => w.x === newX && w.y === newY);
+                
+                if (hitWall) {
+                    this.audio.playBump();
+                    this.vibrate([150, 80]);
+                    this.showStatus('red');
+                    
+                    const messages = ["你撞到了墙", "前方有障碍物", "这里走不通", "你摸到了冰冷的墙面"];
+                    this.narrate(messages[Math.floor(Math.random() * messages.length)], "试着换个方向");
+                    
+                    let panDir = 'center';
+                    if (dx < 0) panDir = 'left';
+                    if (dx > 0) panDir = 'right';
+                    this.audio.playEcho(1, panDir);
+                    
+                    this.stats.currentLevelWallHits++;
+                    if (this.stats.currentLevelWallHits > this.stats.maxWallHitsInLevel) {
+                        this.stats.maxWallHitsInLevel = this.stats.currentLevelWallHits;
+                    }
+                    
+                    return;
+                }
+                
+                this.player.x = newX;
+                this.player.y = newY;
+                this.stats.currentLevelSteps++;
+                this.stats.totalSteps++;
+                this.audio.playStep();
+                this.vibrate(20);
+                
+                const key = `${newX},${newY}`;
+                this.visited.add(key);
+                
+                this.eventCooldown--;
+                if (this.eventCooldown <= 0 && this.eventsTriggered < this.config.maxEvents) {
+                    if (Math.random() < this.config.eventChance) {
+                        this.triggerRandomEvent();
+                        return;
+                    }
+                }
+                
+                if (this.player.x === this.goal.x && this.player.y === this.goal.y) {
+                    this.findLight();
+                    return;
+                }
+                
+                setTimeout(() => this.scan(), 100);
+            }
+            
+            getRandomEvents() {
+                let positive = [...BASE_EVENTS.positive];
+                let negative = [...BASE_EVENTS.negative];
+                
+                if (this.extraEventsEnabled) {
+                    positive = positive.concat(EXTRA_EVENTS.positive);
+                    negative = negative.concat(EXTRA_EVENTS.negative);
+                }
+                
+                return { positive, negative };
+            }
+            
+            triggerRandomEvent() {
+                this.eventsTriggered++;
+                this.stats.totalEvents++;
+                this.eventCooldown = this.config.eventCooldownBase;
+                
+                const events = this.getRandomEvents();
+                const isPositive = Math.random() < this.config.positiveEventWeight;
+                const eventPool = isPositive ? events.positive : events.negative;
+                const event = eventPool[Math.floor(Math.random() * eventPool.length)];
+                
+                this.pendingEvent = event;
+                this.waitingForContinue = true;
+                
+                this.ui.eventBadge.textContent = "· 随机事件 ·";
+                this.ui.eventBadge.classList.add('show');
+                this.ui.continueHint.classList.add('show');
+                
+                if (isPositive) {
+                    this.audio.playPositiveEvent();
+                    this.stats.currentConsecutivePositive++;
+                    this.stats.currentConsecutiveNegative = 0;
+                    this.stats.consecutiveNoEventLevels = 0;
+                    if (this.stats.currentConsecutivePositive > this.stats.maxConsecutivePositive) {
+                        this.stats.maxConsecutivePositive = this.stats.currentConsecutivePositive;
+                    }
+                } else {
+                    this.audio.playNegativeEvent();
+                    this.stats.currentConsecutiveNegative++;
+                    this.stats.currentConsecutivePositive = 0;
+                    this.stats.consecutiveNoEventLevels = 0;
+                    this.stats.currentLevelNegativeEvents++;
+                    if (this.stats.currentConsecutiveNegative > this.stats.maxConsecutiveNegative) {
+                        this.stats.maxConsecutiveNegative = this.stats.currentConsecutiveNegative;
+                    }
+                }
+                
+                this.showStatus(event.color);
+                this.vibrate(event.vibration);
+                
+                this.narrate(event.title, event.desc);
+            }
+            
+            continueEvent() {
+                if (!this.pendingEvent) return;
+                
+                this.ui.continueHint.classList.remove('show');
+                
+                const event = this.pendingEvent;
+                this.pendingEvent = null;
+                this.waitingForContinue = false;
+                
+                this.applyEventEffect(event);
+                
+                setTimeout(() => {
+                    this.ui.eventBadge.classList.remove('show');
+                }, 2000);
+            }
+            
+            applyEventEffect(event) {
+                switch(event.effect) {
+                    case 'teleport':
+                        this.player.x = Math.max(1, this.goal.x - 2);
+                        this.player.y = Math.max(1, this.goal.y - 2);
+                        this.stats.wasTeleported = true;
+                        this.narrate(event.result, "你离目标更近了");
+                        break;
+                        
+                    case 'guide':
+                        this.hasGuidance = true;
+                        this.narrate(event.result, "你感受到了方向的指引");
+                        break;
+                        
+                    case 'vision':
+                        this.narrate(event.result, "你对周围环境有了清晰的认知");
+                        setTimeout(() => this.scan(), 2500);
+                        return;
+                        
+                    case 'shortcut':
+                        if (this.walls.length > 4) {
+                            this.walls.splice(4, 2);
+                        }
+                        this.narrate(event.result, "道路变得通畅了");
+                        break;
+                        
+                    case 'skip':
+                        this.player.x += Math.floor(Math.random() * 2) + 1;
+                        this.player.y += Math.floor(Math.random() * 2) + 1;
+                        this.narrate(event.result, "你绕过了困难路段");
+                        break;
+                        
+                    case 'speed':
+                        this.eventCooldown = Math.max(1, this.eventCooldown - 2);
+                        this.narrate(event.result, "你感到精神振奋");
+                        break;
+                        
+                    case 'heal':
+                        this.isStunned = false;
+                        this.narrate(event.result, "你恢复了状态");
+                        break;
+                        
+                    case 'stun':
+                        this.isStunned = true;
+                        this.narrate(event.result, "你需要缓一缓...");
+                        setTimeout(() => {
+                            this.isStunned = false;
+                            this.narrate("你恢复了精神", "可以继续前进了");
+                        }, this.config.stunDuration);
+                        return;
+                        
+                    case 'confuse':
+                        this.player.x = Math.floor(Math.random() * (this.goal.x - 2)) + 1;
+                        this.player.y = Math.floor(Math.random() * (this.goal.y - 2)) + 1;
+                        this.stats.wasTeleported = true;
+                        this.narrate(event.result, "你迷失了方向");
+                        break;
+                        
+                    case 'slow':
+                        this.eventCooldown += 2;
+                        this.narrate(event.result, "移动变得困难");
+                        break;
+                        
+                    case 'teleport_random':
+                        this.player.x = Math.floor(Math.random() * 3) + 1;
+                        this.player.y = Math.floor(Math.random() * 3) + 1;
+                        this.stats.wasTeleported = true;
+                        this.narrate(event.result, "你来到了陌生的地方");
+                        break;
+                }
+                
+                setTimeout(() => this.scan(), 2000);
+            }
+            
+            scan() {
+                const directions = [
+                    {dx: 0, dy: -1, name: '前'},
+                    {dx: 0, dy: 1, name: '后'},
+                    {dx: -1, dy: 0, name: '左'},
+                    {dx: 1, dy: 0, name: '右'}
+                ];
+                
+                let nearby = [];
+                directions.forEach(d => {
+                    const x = this.player.x + d.dx;
+                    const y = this.player.y + d.dy;
+                    if (this.walls.some(w => w.x === x && w.y === y)) {
+                        nearby.push(d.name);
+                    }
+                });
+                
+                const dist = Math.sqrt(
+                    Math.pow(this.goal.x - this.player.x, 2) + 
+                    Math.pow(this.goal.y - this.player.y, 2)
+                );
+                
+                let mainText = "";
+                let subText = "";
+                
+                if (nearby.length === 0) {
+                    const texts = ["周围很空旷", "前方没有障碍物", "你小心翼翼地前进", "脚下是平坦的地面"];
+                    mainText = texts[Math.floor(Math.random() * texts.length)];
+                } else if (nearby.length === 1) {
+                    mainText = `${nearby[0]}方似乎有障碍`;
+                } else {
+                    mainText = `${nearby.join('、')}方都有障碍`;
+                }
+                
+                if (this.hasGuidance && dist > 1) {
+                    const dx = this.goal.x - this.player.x;
+                    const dy = this.goal.y - this.player.y;
+                    let hint = "";
+                    if (Math.abs(dx) > Math.abs(dy)) {
+                        hint = dx > 0 ? "右" : "左";
+                    } else {
+                        hint = dy > 0 ? "下" : "上";
+                    }
+                    subText = `有人告诉你：往${hint}边走...`;
+                    this.audio.playEcho(2, 'center');
+                } else if (dist < this.config.hintDistance) {
+                    subText = "附近似乎有光...";
+                    this.audio.playEcho(2, 'center');
+                } else {
+                    subText = `距离目标还有 ${Math.floor(dist)} 步`;
+                }
+                
+                this.narrate(mainText, subText);
+            }
+            
+            findLight() {
+                this.state = 'found';
+                this.isLightFound = true;
+                this.stopAIHintTimer();
+
+                // 更新统计信息
+                if (this.level > this.stats.maxLevel) {
+                    this.stats.maxLevel = this.level;
+                }
+                if (this.stats.currentLevelSteps > this.stats.maxStepsInLevel) {
+                    this.stats.maxStepsInLevel = this.stats.currentLevelSteps;
+                }
+                if (this.difficulty === 'hard') {
+                    if (this.level > this.stats.hardModeMaxLevel) {
+                        this.stats.hardModeMaxLevel = this.level;
+                    }
+                    this.stats.hardModeTotalLevels++;
+                }
+                if (this.stats.currentLevelNegativeEvents === 0 && this.level > this.stats.noNegativeRun) {
+                    this.stats.noNegativeRun = this.level;
+                }
+                if (this.stats.wasTeleported && this.level >= 3) {
+                    this.stats.comebackCompleted = true;
+                }
+                
+                // 无事件通关统计
+                if (this.eventsTriggered === 0) {
+                    this.stats.consecutiveNoEventLevels++;
+                    if (this.stats.consecutiveNoEventLevels > this.stats.maxNoEventLevels) {
+                        this.stats.maxNoEventLevels = this.stats.consecutiveNoEventLevels;
+                    }
+                } else {
+                    this.stats.consecutiveNoEventLevels = 0;
+                }
+
+                // 检查并保存成就
+                this.checkAchievements();
+                this.saveAchievementData();
+                this.updateSaveButtonState();
+
+                this.audio.playLightFound();
+                this.ui.body.classList.add('light-found');
+                this.showStatus('green');
+                this.vibrate([50, 100, 50, 100, 50, 200, 100, 200]);
+
+                this.narrate("你找到了光", "黑暗正在退去...");
+
+                setTimeout(() => {
+                    this.nextChapter();
+                }, 4000);
+            }
+            
+            nextChapter() {
+                this.level++;
+                
+                this.ui.body.classList.remove('light-found');
+                this.audio.playDarknessReturns();
+                
+                this.ui.chapter.textContent = `第 ${this.level} 章`;
+                this.generateMap();
+                
+                this.narrate("黑暗再次降临", "新的旅程开始了，前方仍有未知...");
+                
+                setTimeout(() => {
+                    this.state = 'playing';
+                    this.resetAIHintTimer();
+                    this.scan();
+                }, 2500);
+            }
+            
+            showStatus(color) {
+                this.ui.overlay.className = color;
+                setTimeout(() => {
+                    this.ui.overlay.className = '';
+                }, 800);
+            }
+            
+            narrate(main, sub) {
+                this.ui.main.textContent = main;
+                this.ui.sub.textContent = sub;
+                this.audio.speak(main);
+            }
+            
+            vibrate(pattern) {
+                if ('vibrate' in navigator) {
+                    navigator.vibrate(pattern);
+                    this.ui.vib.classList.add('active');
+                    const duration = Array.isArray(pattern) ? pattern.reduce((a, b) => a + b, 0) : pattern;
+                    setTimeout(() => this.ui.vib.classList.remove('active'), Math.min(duration, 200));
+                }
+            }
+        }
+        
+        // 启动
+        const game = new Game();
+    </script>
+</body>
+</html>
