@@ -596,8 +596,7 @@ npx serve .
 ```
 寻光/
 ├── index.html          # 全部代码：HTML结构 + CSS样式 + JS逻辑（3419行）
-├── README.md           # 本文件
-└── 寻光2.3-r.zip       # 发布包
+└── README.md           # 本文件
 ```
 
 ---
